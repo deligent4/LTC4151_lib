@@ -8,8 +8,8 @@
 #ifndef INC_LTC4151_H_
 #define INC_LTC4151_H_
 
-#include 	"stm32f1xx_hal.h"
-#include 	"i2c.h"
+#include "stm32f1xx_hal.h"
+#include "i2c.h"
 
 #define LTC4151_I2C_HANDLE			hi2c2
 

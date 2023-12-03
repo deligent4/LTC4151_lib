@@ -58,17 +58,24 @@ static uint16_t Read_ADC(LTC4151_t *ltc4151, uint16_t reg, uint16_t numOfBytes)
 	uint8_t buf[2];
 	uint8_t h, l;
 	uint16_t result;
-	HAL_I2C_Mem_Read(&(ltc4151->_i2c_handle), ltc4151->_i2c_add,
-					reg, 1, buf, numOfBytes, HAL_MAX_DELAY);
+	uint8_t status;
 
-	if (numOfBytes == 1)
+	status = HAL_I2C_Mem_Read(&(ltc4151->_i2c_handle), ltc4151->_i2c_add,
+					reg, 1, buf, numOfBytes, HAL_MAX_DELAY);
+	if(status == HAL_OK)
 	{
-		result = buf[0];
-	} else if (numOfBytes == 2)
+		if (numOfBytes == 1)
+		{
+			result = buf[0];
+		} else if (numOfBytes == 2)
+		{
+			h = buf[0];
+			l = buf[1];
+			result = h << 4 | l >> 4;
+		}
+	}else
 	{
-		h = buf[0];
-		l = buf[1];
-		result = h << 4 | l >> 4;
+		return 0;		//return 0, if there is no device connected
 	}
 
 	return result;
@@ -87,14 +94,19 @@ static uint16_t Read_ADC_Snapshot(LTC4151_t *ltc4151, uint16_t reg)
 	uint8_t buf[2];
 	uint8_t h, l;
 	uint16_t result;
+	uint8_t status;
 
-	HAL_I2C_Mem_Read(&(ltc4151->_i2c_handle), ltc4151->_i2c_add,
+	status = HAL_I2C_Mem_Read(&(ltc4151->_i2c_handle), ltc4151->_i2c_add,
 						reg, 1, buf, 2, HAL_MAX_DELAY);
-
-	h = buf[0];
-	l = buf[1];
-	result = h << 4 | l >> 4;
-
+	if(status == HAL_OK)
+	{
+		h = buf[0];
+		l = buf[1];
+		result = h << 4 | l >> 4;
+	}else
+	{
+		return 0;		//return 0, if there is no device connected
+	}
 	return result;
 }
 
@@ -110,6 +122,7 @@ static void Set_Control_Register(LTC4151_t *ltc4151, uint8_t ctrl_reg)
 {
 	uint8_t buf[1];
 	buf[0] = ctrl_reg;
+
 	HAL_I2C_Mem_Write(&(ltc4151->_i2c_handle), ltc4151->_i2c_add,
 						REG_CTRL, 1, buf, 1, HAL_MAX_DELAY);
 }
@@ -137,6 +150,7 @@ static uint8_t Get_Control_Register(LTC4151_t *ltc4151)
 uint16_t Get_Load_Current(LTC4151_t *ltc4151)
 {
 	uint16_t scale_factor = (81.92 * FACTORx1000) / 4096;
+
  	return Read_ADC(ltc4151, REG_SENSE_H, 2) * scale_factor / ltc4151->_sense_resistor;
 }
 
@@ -149,7 +163,7 @@ uint16_t Get_Load_Current(LTC4151_t *ltc4151)
   */
 uint16_t Get_Input_Voltage(LTC4151_t *ltc4151)
 {
-	return Read_ADC(ltc4151, REG_VIN_H, 2) * (102.4 * FACTORx1000) / 4096.0;
+	return Read_ADC(ltc4151, REG_VIN_H, 2) * (102.4 * FACTORx1000) / 4096;
 }
 
 
@@ -161,7 +175,7 @@ uint16_t Get_Input_Voltage(LTC4151_t *ltc4151)
   */
 uint16_t Get_ADCIn_Voltage(LTC4151_t *ltc4151)
 {
-	return Read_ADC(ltc4151, REG_ADIN_H, 2) * 2.048 / 4096.0;
+	return Read_ADC(ltc4151, REG_ADIN_H, 2) * (2.048 * FACTORx1000) / 4096;
 }
 
 
@@ -180,7 +194,8 @@ uint16_t Get_Snapshot_Load_Current(LTC4151_t *ltc4151)
 	ctrl_reg |= SNAPSHOT_CHANNEL_SENSE << CTRL_BIT_ADC_CHN_SNAPSHOT_MODE;
 	Set_Control_Register(ltc4151, ctrl_reg);
 
-	return Read_ADC_Snapshot(ltc4151, REG_SENSE_H) * 81.92 / 4096.0 / ltc4151->_sense_resistor;
+	uint16_t scale_factor = (81.92 * FACTORx1000) / 4096;
+	return Read_ADC_Snapshot(ltc4151, REG_SENSE_H) * scale_factor / ltc4151->_sense_resistor;
 }
 
 
@@ -198,7 +213,7 @@ uint16_t Get_Snapshot_Input_Voltage(LTC4151_t *ltc4151)
 	ctrlReg |= SNAPSHOT_CHANNEL_VIN << CTRL_BIT_ADC_CHN_SNAPSHOT_MODE;
 	Set_Control_Register(ltc4151, ctrlReg);
 
-	return Read_ADC_Snapshot(ltc4151, REG_VIN_H) * 102.4 / 4096.0;
+	return Read_ADC_Snapshot(ltc4151, REG_VIN_H) * (102.4 * FACTORx1000) / 4096;
 }
 
 
@@ -216,7 +231,7 @@ uint16_t Get_Snapshot_ADCIn_Voltage(LTC4151_t *ltc4151)
 	ctrlReg |= SNAPSHOT_CHANNEL_ADIN << CTRL_BIT_ADC_CHN_SNAPSHOT_MODE;
 	Set_Control_Register(ltc4151, ctrlReg);
 
-	return Read_ADC_Snapshot(ltc4151, REG_ADIN_H) * 2.048 / 4096.0;
+	return Read_ADC_Snapshot(ltc4151, REG_ADIN_H) * (2.048 * FACTORx1000) / 4096;
 }
 
 

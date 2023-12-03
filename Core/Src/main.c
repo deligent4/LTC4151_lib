@@ -34,7 +34,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define A0		0		//LTC4151 A0 Pin HIGH->1, LOW->0
+#define A1		0		//LTC4151 A1 Pin HIGH->1, LOW->0
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,13 +46,14 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint32_t tick;
+uint32_t tick, prev_tick;
+uint32_t loop_rate = 2000;
 
 LTC4151_t LTC4151;
 
-uint16_t voltage = 0;
-uint16_t current = 0;
-
+uint16_t voltage = 0, voltage_snapshot = 0;
+uint16_t current = 0, current_snapshot = 0;
+uint16_t sense_resistor = 8;		//8 milli-ohms
 //uint8_t buf[2];
 //uint8_t h, l;
 //uint16_t result;
@@ -102,7 +104,7 @@ int main(void)
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
-  LTC4151_t_Init(hi2c2, &LTC4151, 0, 0, 8);
+  LTC4151_t_Init(hi2c2, &LTC4151, A0, A1, sense_resistor);
 
 //    for(i = 1; i < 127; i++){
 //    	ret = HAL_I2C_IsDeviceReady(&hi2c2, (uint16_t)(i<<1), 3, 5);
@@ -122,6 +124,12 @@ int main(void)
 	  voltage = Get_Input_Voltage(&LTC4151);
 	  current = Get_Load_Current(&LTC4151);
 
+	  if(tick - prev_tick >= loop_rate){
+		  prev_tick = tick;
+		  voltage_snapshot = Get_Snapshot_Input_Voltage(&LTC4151);
+		  current_snapshot = Get_Snapshot_Load_Current(&LTC4151);
+		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
